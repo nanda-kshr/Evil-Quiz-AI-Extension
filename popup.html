@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+/* Evil Quiz AI Dark Theme */
+body {
+  width: 350px;
+  min-height: 450px;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+  color: #e0e6ed;
+  overflow: hidden;
+}
+
+/* Animated background particles */
+body::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 20%, rgba(255, 0, 100, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(138, 43, 226, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 60%, rgba(255, 69, 0, 0.08) 0%, transparent 50%);
+  animation: float 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(2deg); }
+}
+
+.container {
+  padding: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Header Styles */
+.header {
+  text-align: center;
+  margin-bottom: 25px;
+  position: relative;
+}
+
+.header h2 {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ff0066, #8a2be2, #ff4500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(255, 0, 102, 0.3);
+  position: relative;
+}
+
+.header h2::after {
+  content: '⚡';
+  position: absolute;
+  right: -25px;
+  top: -5px;
+  font-size: 16px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.header p {
+  margin: 0;
+  color: #a0a6b8;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.user-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.credits {
+  background: linear-gradient(135deg, #ff0066, #8a2be2);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(255, 0, 102, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.credits::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: shine 3s infinite;
+}
+
+@keyframes shine {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Form Container */
+.form-container {
+  position: relative;
+  min-height: 280px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.form {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  opacity: 0;
+  transform: translateX(30px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.form.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: all;
+}
+
+.form h3 {
+  margin: 0 0 25px 0;
+  text-align: center;
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 600;
+  text-shadow: 0 2px 10px rgba(255, 0, 102, 0.3);
+}
+
+.form input {
+  width: 100%;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  font-size: 14px;
+  color: #ffffff;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.form input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.form input:focus {
+  outline: none;
+  border-color: #ff0066;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 20px rgba(255, 0, 102, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Button Styles */
+.primary-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #ff0066, #8a2be2);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(255, 0, 102, 0.4);
+}
+
+.primary-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(255, 0, 102, 0.5);
+}
+
+.primary-btn:hover::before {
+  left: 100%;
+}
+
+.secondary-btn {
+  padding: 10px 18px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e0e6ed;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+}
+
+.danger-btn {
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #ff4757, #ff3742);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+}
+
+.danger-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 71, 87, 0.4);
+}
+
+.form-switch {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: #a0a6b8;
+}
+
+.form-switch a {
+  color: #ff0066;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.form-switch a:hover {
+  color: #ff3399;
+  text-shadow: 0 0 10px rgba(255, 0, 102, 0.5);
+}
+
+/* Instructions */
+.instructions {
+  background: rgba(255, 0, 102, 0.1);
+  border: 1px solid rgba(255, 0, 102, 0.2);
+  padding: 18px;
+  border-radius: 16px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+.instructions::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #ff0066, #8a2be2, #ff4500);
+  animation: gradientMove 3s linear infinite;
+}
+
+@keyframes gradientMove {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.instructions p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #ffffff;
+  line-height: 1.5;
+}
+
+.instructions strong {
+  color: #ff0066;
+  font-weight: 600;
+}
+
+.note {
+  font-size: 12px !important;
+  color: #a0a6b8 !important;
+  font-style: italic;
+  margin-top: 12px !important;
+  opacity: 0.8;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+/* Error and Loading */
+.error {
+  background: linear-gradient(135deg, rgba(255, 71, 87, 0.2), rgba(255, 71, 87, 0.1));
+  color: #ff6b7d;
+  border: 1px solid rgba(255, 71, 87, 0.3);
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  margin-top: 15px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.loading {
+  background: linear-gradient(135deg, rgba(255, 0, 102, 0.2), rgba(138, 43, 226, 0.1));
+  color: #ff0066;
+  border: 1px solid rgba(255, 0, 102, 0.3);
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  margin-top: 15px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  position: relative;
+}
+
+.loading::after {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 0, 102, 0.3);
+  border-top: 2px solid #ff0066;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.hidden {
+  display: none;
+}
+
+.screen {
+  display: block;
+}
+
+/* Quiz Popup Styles */
+.quiz-ai-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.quiz-ai-content {
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+  border: 1px solid rgba(255, 0, 102, 0.3);
+  padding: 0;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.quiz-ai-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 0, 102, 0.2);
+  background: linear-gradient(135deg, #ff0066, #8a2be2);
+  color: white;
+  border-radius: 20px 20px 0 0;
+}
+
+.quiz-ai-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.quiz-ai-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.quiz-ai-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.quiz-ai-body {
+  padding: 20px;
+  color: #e0e6ed;
+}
+
+/* Enhanced option styles */
+.quiz-option {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border-left: 4px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.quiz-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(4px);
+}
+
+.quiz-option.correct {
+  background: rgba(52, 168, 83, 0.2) !important;
+  border-left-color: #34a853 !important;
+  box-shadow: 0 4px 20px rgba(52, 168, 83, 0.2);
+}
+
+.option-label {
+  font-weight: bold;
+  color: #ff0066;
+  margin-right: 12px;
+  min-width: 24px;
+  padding: 4px 8px;
+  background: rgba(255, 0, 102, 0.2);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.quiz-option.correct .option-label {
+  color: #34a853 !important;
+  background: rgba(52, 168, 83, 0.2);
+}
+
+.option-text {
+  flex: 1;
+  color: #e0e6ed;
+  line-height: 1.5;
+}
+
+/* Footer and other elements */
+.quiz-ai-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0 0 20px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  color: #a0a6b8;
+}
+
+.credits-info {
+  font-weight: 600;
+  color: #ff0066;
+}
+
+/* Responsive adjustments */
+@media (max-width: 400px) {
+  body {
+    width: 300px;
+  }
+  
+  .container {
+    padding: 15px;
+  }
+  
+  .header h2 {
+    font-size: 24px;
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<!-- Login/Register Screen -->
+<div id="authScreen" class="screen">
+<div class="header">
+<h2>Evil Quiz AI</h2>
+<p>Unleash the power of knowledge</p>
+</div>
+<div class="form-container">
+<div id="loginForm" class="form active">
+<h3>Enter the Dark Side</h3>
+<input type="email" id="loginEmail" placeholder="Email Address" required>
+<input type="password" id="loginPassword" placeholder="Secret Password" required>
+<button id="loginBtn" class="primary-btn">Hack In</button>
+<p class="form-switch">New to the darkness? <a href="#" id="showRegister">Join Us</a></p>
+</div>
+<div id="registerForm" class="form">
+<h3>Join the Evil Alliance</h3>
+<input type="text" id="registerName" placeholder="Your Evil Name" required>
+<input type="email" id="registerEmail" placeholder="Email Address" required>
+<input type="password" id="registerPassword" placeholder="Create Secret Password" required>
+<button id="registerBtn" class="primary-btn">Begin Domination</button>
+<p class="form-switch">Already corrupted? <a href="#" id="showLogin">Sign In</a></p>
+</div>
+</div>
+<div id="authError" class="error hidden"></div>
+<div id="authLoading" class="loading hidden">Summoning dark powers...</div>
+</div>
+<!-- Main Screen -->
+<div id="mainScreen" class="screen hidden">
+<div class="header">
+<h2>Evil Quiz AI</h2>
+<div class="user-info">
+<span id="userName"></span>
+<span id="userCredits" class="credits"></span>
+</div>
+</div>
+<div class="instructions">
+<p>🧠 <strong>How to dominate any quiz:</strong></p>
+<p>1. Find a multiple choice question with options</p>
+<p>2. Right-click → "Get AI Answer"</p>
+<p>3. Watch the AI reveal the correct answer</p>
+</div>
+<div class="actions">
+<button id="refreshCreditsBtn" class="secondary-btn">⚡ Refresh Power</button>
+<button id="logoutBtn" class="danger-btn">🚪 Exit Lair</button>
+</div>
+<div id="mainError" class="error hidden"></div>
+</div>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>

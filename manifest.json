@@ -1,20 +1,22 @@
 {
   "manifest_version": 3,
-  "name": "Quiz AI Extension",
+  "name": "Evil Quiz AI",
   "version": "1.0.0",
-  "description": "Get AI-generated quiz questions from selected text",
+  "description": "Unleash the power of knowledge with evil AI answers",
   "permissions": [
     "activeTab",
     "storage",
-    "contextMenus"
+    "contextMenus",
+    "notifications",
+    "scripting"
   ],
   "host_permissions": [
-    "http://localhost:3000/*",
-    "https://your-domain.com/*"
+    "https://evil-quiz-ai-backend.vercel.app/*",
+    "https://evil-quiz-ai-backend.vercel.app/*"
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Quiz AI",
+    "default_title": "Evil Quiz AI",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -28,7 +30,7 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
-      "css": ["styles.css"]
+      "run_at": "document_end"
     }
   ],
   "icons": {
