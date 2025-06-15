@@ -204,6 +204,13 @@ class QuizExtensionBackground {
         } else if (response.status === 403 || (data.error && data.error.includes('credit'))) {
           // Handle insufficient credits from API
           await this.createNoCreditsPopup(tabId);
+        } else if (response.status === 429) {
+          // Handle rate limiting
+          const endTime = Date.now() + 60000;
+          await chrome.storage.local.set({ rateLimitEndTime: endTime });
+          await this.showNotification('Try after 1 minute', 'error');
+          // Send message to popup to update timer
+          chrome.runtime.sendMessage({ action: 'updateRateLimitTimer', timeLeft: 60 });
         } else {
           throw new Error(data.error || 'Failed to get answer');
         }

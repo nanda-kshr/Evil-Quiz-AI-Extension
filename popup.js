@@ -1,12 +1,41 @@
 class QuizExtensionPopup {
   constructor() {
     this.apiBase = 'https://evil-quiz-ai-backend.vercel.app/api/v1';
+    this.timerInterval = null;
     this.init();
   }
 
   async init() {
     this.bindEvents();
     await this.checkAuthStatus();
+    await this.checkExistingTimer();
+    this.setupMessageListener();
+  }
+
+  setupMessageListener() {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request.action === 'updateRateLimitTimer') {
+        this.startRateLimitTimer(request.timeLeft);
+      }
+      return true;
+    });
+  }
+
+  async checkExistingTimer() {
+    const result = await chrome.storage.local.get(['rateLimitEndTime']);
+    if (result.rateLimitEndTime) {
+      const endTime = result.rateLimitEndTime;
+      const now = Date.now();
+      
+      if (endTime > now) {
+        // Timer is still active
+        const timeLeft = Math.ceil((endTime - now) / 1000);
+        this.startRateLimitTimer(timeLeft);
+      } else {
+        // Timer has expired
+        await chrome.storage.local.remove(['rateLimitEndTime']);
+      }
+    }
   }
 
   bindEvents() {
@@ -21,12 +50,19 @@ class QuizExtensionPopup {
       this.showLoginForm();
     });
 
+    document.getElementById('backToRegister').addEventListener('click', (e) => {
+      e.preventDefault();
+      this.showRegisterForm();
+    });
+
     // Auth buttons
     document.getElementById('loginBtn').addEventListener('click', () => this.handleLogin());
     document.getElementById('registerBtn').addEventListener('click', () => this.handleRegister());
+    document.getElementById('verifyOtpBtn').addEventListener('click', () => this.handleOtpVerification());
 
     // Main screen buttons
     document.getElementById('refreshCreditsBtn').addEventListener('click', () => this.refreshCredits());
+    document.getElementById('buyCreditsBtn').addEventListener('click', () => this.handleBuyCredits());
     document.getElementById('logoutBtn').addEventListener('click', () => this.handleLogout());
 
     // Enter key handling
@@ -37,6 +73,8 @@ class QuizExtensionPopup {
           this.handleLogin();
         } else if (activeForm && activeForm.id === 'registerForm') {
           this.handleRegister();
+        } else if (activeForm && activeForm.id === 'otpForm') {
+          this.handleOtpVerification();
         }
       }
     });
@@ -47,9 +85,14 @@ class QuizExtensionPopup {
       const result = await chrome.storage.sync.get(['accessToken', 'userInfo']);
       
       if (result.accessToken && result.userInfo) {
+        // User is logged in, hide entire auth section and show main screen
+        document.getElementById('authScreen').style.display = 'none';
+        document.getElementById('mainScreen').style.display = 'block';
+        
         await this.showMainScreen(result.userInfo);
         await this.refreshCredits();
       } else {
+        // User is not logged in, show auth section
         this.showAuthScreen();
       }
     } catch (error) {
@@ -59,13 +102,23 @@ class QuizExtensionPopup {
   }
 
   showAuthScreen() {
-    document.getElementById('authScreen').classList.remove('hidden');
-    document.getElementById('mainScreen').classList.add('hidden');
+    document.getElementById('authScreen').style.display = 'block';
+    document.getElementById('mainScreen').style.display = 'none';
+    // Reset all forms to initial state
+    document.getElementById('loginForm').classList.add('active');
+    document.getElementById('registerForm').classList.remove('active');
+    document.getElementById('otpForm').classList.remove('active');
+    this.clearForms();
+    this.clearErrors();
   }
 
   showMainScreen(userInfo) {
-    document.getElementById('authScreen').classList.add('hidden');
-    document.getElementById('mainScreen').classList.remove('hidden');
+    const authScreen = document.getElementById('authScreen');
+    const mainScreen = document.getElementById('mainScreen');
+    
+    authScreen.style.display = 'none';
+    mainScreen.style.display = 'block';
+    mainScreen.style.visibility = 'visible';
     
     document.getElementById('userName').textContent = userInfo.name;
     document.getElementById('userCredits').textContent = `${userInfo.credits} credits`;
@@ -80,6 +133,14 @@ class QuizExtensionPopup {
   showRegisterForm() {
     document.getElementById('registerForm').classList.add('active');
     document.getElementById('loginForm').classList.remove('active');
+    this.clearErrors();
+  }
+
+  showOtpForm(email) {
+    document.getElementById('registerForm').classList.remove('active');
+    document.getElementById('loginForm').classList.remove('active');
+    document.getElementById('otpForm').classList.add('active');
+    document.getElementById('otpEmail').value = email;
     this.clearErrors();
   }
 
@@ -105,6 +166,10 @@ class QuizExtensionPopup {
       });
 
       const data = await response.json();
+
+      if (response.status === 429) {
+        throw new Error('Try after 1 minute');
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to enter the dark side');
@@ -156,17 +221,67 @@ class QuizExtensionPopup {
 
       const data = await response.json();
 
+      if (response.status === 429) {
+        throw new Error('Try after 1 minute');
+      }
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to join the evil alliance');
       }
 
-      // Show success and switch to login
-      this.showError('authError', 'Welcome to the dark side! Please login to begin.');
-      this.clearForms();
-      this.showLoginForm();
+      // Show OTP form
+      this.showOtpForm(email);
 
     } catch (error) {
       console.error('Registration error:', error);
+      this.showError('authError', error.message);
+    } finally {
+      this.showLoading('authLoading', false);
+    }
+  }
+
+  async handleOtpVerification() {
+    const email = document.getElementById('otpEmail').value.trim();
+    const otp = document.getElementById('otpCode').value.trim();
+
+    if (!otp) {
+      this.showError('authError', 'Please enter the OTP code');
+      return;
+    }
+
+    this.showLoading('authLoading', true);
+    this.clearErrors();
+
+    try {
+      const response = await fetch(`${this.apiBase}/verify-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, otp }),
+      });
+
+      const data = await response.json();
+
+      if (response.status === 429) {
+        throw new Error('Try after 1 minute');
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to verify OTP');
+      }
+
+      // Save auth data
+      await chrome.storage.sync.set({
+        accessToken: data.access_token,
+        userInfo: data.user
+      });
+
+      await this.showMainScreen(data.user);
+      this.clearForms();
+
+    } catch (error) {
+      console.error('OTP verification error:', error);
       this.showError('authError', error.message);
     } finally {
       this.showLoading('authLoading', false);
@@ -187,6 +302,14 @@ class QuizExtensionPopup {
         },
       });
 
+      if (response.status === 429) {
+        // Set rate limit end time (1 minute from now)
+        const endTime = Date.now() + 60000;
+        await chrome.storage.local.set({ rateLimitEndTime: endTime });
+        this.startRateLimitTimer(60);
+        return;
+      }
+
       if (response.ok) {
         const data = await response.json();
         document.getElementById('userCredits').textContent = `${data.credits} credits`;
@@ -206,6 +329,56 @@ class QuizExtensionPopup {
     }
   }
 
+  startRateLimitTimer(initialTime = 60) {
+    // Clear any existing timer
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+    }
+
+    // Show timer element
+    const timerElement = document.getElementById('rateLimitTimer');
+    const timerCount = document.getElementById('timerCount');
+    
+    // Ensure the timer is visible
+    timerElement.style.display = 'block';
+    timerElement.style.visibility = 'visible';
+    timerElement.classList.remove('hidden');
+    
+    // Start with provided time
+    let timeLeft = initialTime;
+    timerCount.textContent = timeLeft;
+
+    // Update timer every second
+    this.timerInterval = setInterval(async () => {
+      timeLeft--;
+      timerCount.textContent = timeLeft;
+
+      if (timeLeft <= 0) {
+        clearInterval(this.timerInterval);
+        timerElement.style.display = 'none';
+        timerElement.style.visibility = 'hidden';
+        timerElement.classList.add('hidden');
+        this.timerInterval = null;
+        // Clear the stored end time
+        await chrome.storage.local.remove(['rateLimitEndTime']);
+      }
+    }, 1000);
+  }
+
+  handleBuyCredits() {
+    try {
+      const telegramUsername = 'elbeastz';
+      const message = encodeURIComponent('Hey I would like to get more credits on evil quiz ai');
+      const telegramUrl = `https://t.me/${telegramUsername}?text=${message}`;
+      
+      chrome.tabs.create({ url: telegramUrl });
+      
+    } catch (error) {
+      console.error('Failed to open Telegram:', error);
+      this.showError('mainError', 'Failed to open Telegram. Please visit @elbeastz manually.');
+    }
+  }
+
   async handleLogout() {
     await chrome.storage.sync.clear();
     this.showAuthScreen();
@@ -216,6 +389,11 @@ class QuizExtensionPopup {
     const errorEl = document.getElementById(elementId);
     errorEl.textContent = message;
     errorEl.classList.remove('hidden');
+    
+    // Make sure the error is visible for at least 3 seconds
+    setTimeout(() => {
+      errorEl.classList.add('hidden');
+    }, 3000);
   }
 
   clearErrors() {

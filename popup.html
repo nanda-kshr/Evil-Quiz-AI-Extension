@@ -237,6 +237,43 @@ body::before {
   box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
 }
 
+.buy-credits-btn {
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #ffb800, #ff8c00);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 184, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.buy-credits-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.buy-credits-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 184, 0, 0.4);
+}
+
+.buy-credits-btn:hover::before {
+  left: 100%;
+}
+
 .danger-btn {
   padding: 10px 18px;
   background: linear-gradient(135deg, #ff4757, #ff3742);
@@ -325,8 +362,17 @@ body::before {
 /* Actions */
 .actions {
   display: flex;
-  gap: 12px;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.actions-row {
+  display: flex;
+  gap: 8px;
+}
+
+.actions-row button {
+  flex: 1;
 }
 
 /* Error and Loading */
@@ -340,6 +386,25 @@ body::before {
   margin-top: 15px;
   text-align: center;
   backdrop-filter: blur(10px);
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  min-width: 200px;
+  box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translate(-50%, -20px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
 }
 
 .loading {
@@ -373,11 +438,18 @@ body::before {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 .screen {
   display: block;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.screen.hidden {
+  display: none !important;
 }
 
 /* Quiz Popup Styles */
@@ -530,6 +602,49 @@ body::before {
     font-size: 24px;
   }
 }
+
+.rate-limit-timer {
+  background: linear-gradient(135deg, rgba(255, 71, 87, 0.2), rgba(255, 71, 87, 0.1));
+  color: #ff6b7d;
+  border: 1px solid rgba(255, 71, 87, 0.3);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 10px;
+  backdrop-filter: blur(10px);
+  animation: pulse 1s infinite;
+  position: relative;
+  z-index: 9999;
+  width: 100%;
+  box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+}
+
+.rate-limit-timer.hidden {
+  display: none !important;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+#mainScreen {
+  min-height: 450px;
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+#mainScreen .container {
+  position: relative;
+  z-index: 2;
+}
+
+#mainScreen.hidden {
+  display: none !important;
+}
 </style>
 </head>
 <body>
@@ -556,30 +671,47 @@ body::before {
 <button id="registerBtn" class="primary-btn">Begin Domination</button>
 <p class="form-switch">Already corrupted? <a href="#" id="showLogin">Sign In</a></p>
 </div>
+
+<div id="otpForm" class="form">
+<h3>Verify Your Evil Powers</h3>
+<p class="note">We've sent a verification code to your email</p>
+<input type="email" id="otpEmail" placeholder="Email Address" readonly>
+<input type="text" id="otpCode" placeholder="Enter OTP Code" required>
+<button id="verifyOtpBtn" class="primary-btn">Verify & Enter</button>
+<p class="form-switch">Wrong email? <a href="#" id="backToRegister">Go Back</a></p>
+</div>
 </div>
 <div id="authError" class="error hidden"></div>
 <div id="authLoading" class="loading hidden">Summoning dark powers...</div>
 </div>
 <!-- Main Screen -->
-<div id="mainScreen" class="screen hidden">
-<div class="header">
-<h2>Evil Quiz AI</h2>
-<div class="user-info">
-<span id="userName"></span>
-<span id="userCredits" class="credits"></span>
-</div>
-</div>
-<div class="instructions">
-<p>🧠 <strong>How to dominate any quiz:</strong></p>
-<p>1. Find a multiple choice question with options</p>
-<p>2. Right-click → "Get AI Answer"</p>
-<p>3. Watch the AI reveal the correct answer</p>
-</div>
-<div class="actions">
-<button id="refreshCreditsBtn" class="secondary-btn">⚡ Refresh Power</button>
-<button id="logoutBtn" class="danger-btn">🚪 Exit Lair</button>
-</div>
-<div id="mainError" class="error hidden"></div>
+<div id="mainScreen" class="screen">
+  <div class="container">
+    <div class="header">
+      <h2>Evil Quiz AI</h2>
+      <div class="user-info">
+        <span id="userName"></span>
+        <span id="userCredits" class="credits"></span>
+      </div>
+    </div>
+    <div class="instructions">
+      <p>🧠 <strong>How to dominate any quiz:</strong></p>
+      <p>1. Find a multiple choice question with options</p>
+      <p>2. Right-click → "Get AI Answer"</p>
+      <p>3. Watch the AI reveal the correct answer</p>
+    </div>
+    <div class="actions">
+      <button id="buyCreditsBtn" class="buy-credits-btn">💰 Buy More Credits</button>
+      <div class="actions-row">
+        <button id="refreshCreditsBtn" class="secondary-btn">⚡ Refresh Power</button>
+        <button id="logoutBtn" class="danger-btn">🚪 Exit Lair</button>
+      </div>
+      <div id="rateLimitTimer" class="rate-limit-timer hidden">
+        <span id="timerText">Try after </span><span id="timerCount">60</span><span>s</span>
+      </div>
+    </div>
+    <div id="mainError" class="error hidden"></div>
+  </div>
 </div>
 </div>
 <script src="popup.js"></script>
