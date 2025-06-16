@@ -393,7 +393,7 @@ class QuizExtensionPopup {
     // Make sure the error is visible for at least 3 seconds
     setTimeout(() => {
       errorEl.classList.add('hidden');
-    }, 3000);
+    }, 10000);
   }
 
   clearErrors() {
