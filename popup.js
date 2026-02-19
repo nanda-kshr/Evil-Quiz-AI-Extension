@@ -9,6 +9,7 @@ class QuizExtensionPopup {
     this.bindEvents();
     await this.checkAuthStatus();
     await this.checkExistingTimer();
+    await this.loadShortcut();
     this.setupMessageListener();
   }
 
@@ -26,7 +27,7 @@ class QuizExtensionPopup {
     if (result.rateLimitEndTime) {
       const endTime = result.rateLimitEndTime;
       const now = Date.now();
-      
+
       if (endTime > now) {
         // Timer is still active
         const timeLeft = Math.ceil((endTime - now) / 1000);
@@ -65,6 +66,24 @@ class QuizExtensionPopup {
     document.getElementById('buyCreditsBtn').addEventListener('click', () => this.handleBuyCredits());
     document.getElementById('logoutBtn').addEventListener('click', () => this.handleLogout());
 
+    // Shortcut buttons
+    const recordBtn = document.getElementById('recordShortcutBtn');
+    const clearBtn = document.getElementById('clearShortcutBtn');
+
+    if (recordBtn) {
+      recordBtn.addEventListener('click', (e) => {
+        e.preventDefault(); // Prevent default focus/action
+        this.startShortcutRecording();
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.clearShortcut();
+      });
+    }
+
     // Enter key handling
     document.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
@@ -83,12 +102,12 @@ class QuizExtensionPopup {
   async checkAuthStatus() {
     try {
       const result = await chrome.storage.sync.get(['accessToken', 'userInfo']);
-      
+
       if (result.accessToken && result.userInfo) {
         // User is logged in, hide entire auth section and show main screen
         document.getElementById('authScreen').style.display = 'none';
         document.getElementById('mainScreen').style.display = 'block';
-        
+
         await this.showMainScreen(result.userInfo);
         await this.refreshCredits();
       } else {
@@ -115,11 +134,11 @@ class QuizExtensionPopup {
   showMainScreen(userInfo) {
     const authScreen = document.getElementById('authScreen');
     const mainScreen = document.getElementById('mainScreen');
-    
+
     authScreen.style.display = 'none';
     mainScreen.style.display = 'block';
     mainScreen.style.visibility = 'visible';
-    
+
     document.getElementById('userName').textContent = userInfo.name;
     document.getElementById('userCredits').textContent = `${userInfo.credits} credits`;
   }
@@ -291,7 +310,7 @@ class QuizExtensionPopup {
   async refreshCredits() {
     try {
       const result = await chrome.storage.sync.get(['accessToken']);
-      
+
       if (!result.accessToken) return;
 
       const response = await fetch(`${this.apiBase}/get-credits`, {
@@ -313,7 +332,7 @@ class QuizExtensionPopup {
       if (response.ok) {
         const data = await response.json();
         document.getElementById('userCredits').textContent = `${data.credits} credits`;
-        
+
         // Update stored user info
         const userInfo = await chrome.storage.sync.get(['userInfo']);
         if (userInfo.userInfo) {
@@ -338,12 +357,12 @@ class QuizExtensionPopup {
     // Show timer element
     const timerElement = document.getElementById('rateLimitTimer');
     const timerCount = document.getElementById('timerCount');
-    
+
     // Ensure the timer is visible
     timerElement.style.display = 'block';
     timerElement.style.visibility = 'visible';
     timerElement.classList.remove('hidden');
-    
+
     // Start with provided time
     let timeLeft = initialTime;
     timerCount.textContent = timeLeft;
@@ -370,9 +389,9 @@ class QuizExtensionPopup {
       const telegramUsername = 'elbeastz';
       const message = encodeURIComponent('Hey I would like to get more credits on evil quiz ai');
       const telegramUrl = `https://t.me/${telegramUsername}?text=${message}`;
-      
+
       chrome.tabs.create({ url: telegramUrl });
-      
+
     } catch (error) {
       console.error('Failed to open Telegram:', error);
       this.showError('mainError', 'Failed to open Telegram. Please visit @elbeastz manually.');
@@ -389,7 +408,7 @@ class QuizExtensionPopup {
     const errorEl = document.getElementById(elementId);
     errorEl.textContent = message;
     errorEl.classList.remove('hidden');
-    
+
     // Make sure the error is visible for at least 3 seconds
     setTimeout(() => {
       errorEl.classList.add('hidden');
@@ -414,6 +433,116 @@ class QuizExtensionPopup {
 
   clearForms() {
     document.querySelectorAll('input').forEach(input => input.value = '');
+  }
+
+  async loadShortcut() {
+    try {
+      const data = await chrome.storage.sync.get(['evilShortcut']);
+      const btn = document.getElementById('recordShortcutBtn');
+      const clearBtn = document.getElementById('clearShortcutBtn');
+
+      if (data.evilShortcut && btn && clearBtn) {
+        btn.textContent = data.evilShortcut.display;
+        btn.style.borderColor = '#ff0066';
+        btn.style.color = '#ff0066';
+        clearBtn.style.display = 'block';
+      }
+    } catch (error) {
+      console.error('Failed to load shortcut:', error);
+    }
+  }
+
+  startShortcutRecording() {
+    const btn = document.getElementById('recordShortcutBtn');
+    if (!btn) return;
+
+    const originalText = btn.textContent;
+    btn.textContent = 'Press any key combo...';
+    btn.style.borderColor = '#ff0066';
+    btn.style.background = 'rgba(255, 0, 102, 0.1)';
+
+    const recordHandler = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Ignore isolated modifier keys
+      if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;
+
+      const modifiers = [];
+      if (e.ctrlKey) modifiers.push('Ctrl');
+      if (e.altKey) modifiers.push('Alt');
+      if (e.shiftKey) modifiers.push('Shift');
+      if (e.metaKey) modifiers.push('Command');
+
+      const key = e.key.toUpperCase();
+
+      // If no modifiers and a simple key, might be risky but let's allow it for now or enforce at least one modifier?
+      // For safety, let's enforce at least one modifier if it's a common key, but let's keep it simple.
+      // Actually, best practice is to require at least one modifier or Function key.
+
+      const shortcut = {
+        modifiers: modifiers,
+        key: key,
+        display: [...modifiers, key].join(' + ')
+      };
+
+      // Save shortcut
+      await chrome.storage.sync.set({ evilShortcut: shortcut });
+
+      // Update UI
+      btn.textContent = shortcut.display;
+      btn.style.color = '#ff0066';
+
+      const clearBtn = document.getElementById('clearShortcutBtn');
+      if (clearBtn) clearBtn.style.display = 'block';
+
+      // Cleanup
+      document.removeEventListener('keydown', recordHandler);
+      btn.style.background = 'rgba(0, 0, 0, 0.2)';
+    };
+
+    document.addEventListener('keydown', recordHandler);
+
+    // Cancel on blur or click away (optional, but good UX)
+    const cancelHandler = (e) => {
+      if (e.target !== btn) {
+        document.removeEventListener('keydown', recordHandler);
+        document.removeEventListener('click', cancelHandler);
+        // Only reset if we didn't just save a new one (simple check: if text is still prompt)
+        if (btn.textContent === 'Press any key combo...') {
+          this.loadShortcut().then(() => {
+            if (btn.textContent === 'Press any key combo...') {
+              btn.textContent = 'Click to set shortcut';
+              btn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+              btn.style.background = 'rgba(0, 0, 0, 0.2)';
+            }
+          });
+        }
+      }
+    };
+
+    // Slight delay to avoid registering the click that opened this
+    setTimeout(() => {
+      document.addEventListener('click', cancelHandler);
+    }, 100);
+  }
+
+  async clearShortcut() {
+    await chrome.storage.sync.remove(['evilShortcut']);
+
+    const btn = document.getElementById('recordShortcutBtn');
+    const clearBtn = document.getElementById('clearShortcutBtn');
+
+    if (btn) {
+      btn.textContent = 'Click to set shortcut';
+      btn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+      btn.style.color = '#a0a6b8';
+      btn.style.background = 'rgba(0, 0, 0, 0.2)';
+    }
+
+    if (clearBtn) {
+      clearBtn.style.display = 'none';
+    }
   }
 }
 

@@ -15,7 +15,6 @@ class QuizExtensionBackground {
     try {
       await chrome.contextMenus.removeAll();
       this.log('Initial context menus cleared');
-      // Create a test context menu that's always visible
       chrome.contextMenus.create({
         id: "testMenu",
         title: "⚡ Evil Quiz AI Test (Always Visible)",
@@ -29,7 +28,7 @@ class QuizExtensionBackground {
 
   bindEvents() {
     this.log('Binding evil background events');
-    
+
     // Extension installation
     chrome.runtime.onInstalled.addListener(() => {
       this.log('Evil extension installed/updated');
@@ -58,7 +57,7 @@ class QuizExtensionBackground {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       this.log('Received message:', request);
       this.handleMessage(request, sender, sendResponse);
-      return true;
+      return true; // Keep channel open for async response
     });
   }
 
@@ -85,6 +84,19 @@ class QuizExtensionBackground {
           // Handle credit refresh request
           await this.handleCreditRefresh();
           sendResponse({ success: true });
+          break;
+        case 'getAnswerByShortcut':
+          this.log('⌨️ Shortcut answer requested for text:', request.selectedText);
+          if (request.selectedText) {
+            // We don't await here to return response quickly? No, we should probably just trigger it.
+            // Actually, handleAnswerRequest is async. check if we should await or not.
+            // Let's await it to be sure we catch startup errors, but for UI popup we might not wait for full completion?
+            // Let's await it.
+            await this.handleAnswerRequest(request.selectedText, sender.tab.id);
+            sendResponse({ success: true });
+          } else {
+            sendResponse({ success: false, error: 'No text selected' });
+          }
           break;
         default:
           this.log('Unknown action:', request.action);
@@ -138,7 +150,7 @@ class QuizExtensionBackground {
       // Create answer menu if text is selected (regardless of auth status)
       if (hasSelection && selectedText && selectedText.trim().length > 0) {
         this.log('Selection detected, creating answer menu...');
-        
+
         try {
           chrome.contextMenus.create({
             id: "getAnswer",
@@ -152,7 +164,7 @@ class QuizExtensionBackground {
       } else {
         this.log('❌ No valid selection detected');
       }
-      
+
       this.log('=== END TEXT SELECTION HANDLING ===');
     } catch (error) {
       this.log('❌ Error handling text selection:', error);
@@ -162,9 +174,9 @@ class QuizExtensionBackground {
   async handleAnswerRequest(selectedText, tabId) {
     try {
       this.log('🚀 Starting evil answer request...');
-      
+
       const authData = await chrome.storage.sync.get(['accessToken', 'userInfo']);
-      
+
       // Check if user is logged in
       if (!authData.accessToken) {
         await this.createLoginRequiredPopup(tabId);
@@ -240,7 +252,7 @@ class QuizExtensionBackground {
   async createLoginRequiredPopup(tabId) {
     try {
       this.log('🔐 Creating login required popup...');
-      
+
       await chrome.scripting.executeScript({
         target: { tabId: tabId },
         func: () => {
@@ -371,7 +383,7 @@ class QuizExtensionBackground {
   async createNoCreditsPopup(tabId) {
     try {
       this.log('💰 Creating no credits popup...');
-      
+
       await chrome.scripting.executeScript({
         target: { tabId: tabId },
         func: () => {
@@ -513,7 +525,7 @@ class QuizExtensionBackground {
           const existing = document.getElementById('quiz-ai-popup');
           if (existing) existing.remove();
 
-          // Create popup with Evil Quiz AI styling
+          // Create popup with Minimalist styling
           const popup = document.createElement('div');
           popup.id = 'quiz-ai-popup';
           popup.style.cssText = `
@@ -521,15 +533,14 @@ class QuizExtensionBackground {
             top: 20px !important;
             right: 20px !important;
             width: 350px !important;
-            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%) !important;
-            border: 2px solid #ff0066 !important;
-            border-radius: 20px !important;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 30px rgba(255, 0, 102, 0.3) !important;
+            background: #ffffff !important;
+            border: 1px solid #000000 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
             z-index: 999999 !important;
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif !important;
-            animation: evilSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            backdrop-filter: blur(10px) !important;
-            color: #e0e6ed !important;
+            animation: slideIn 0.3s ease-out !important;
+            color: #000000 !important;
           `;
 
           const answerText = answer.correct_option && answer.correct_option !== 'ninte thantha'
@@ -537,54 +548,30 @@ class QuizExtensionBackground {
             : (answer.answer || 'No answer found');
 
           popup.innerHTML = `
-            <div style="background: linear-gradient(135deg, #ff0066, #8a2be2); color: white; padding: 18px; border-radius: 18px 18px 0 0; display: flex; justify-content: space-between; align-items: center; position: relative; overflow: hidden;">
-              <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, #ff0066, #8a2be2, #ff4500); animation: gradientMove 3s linear infinite;"></div>
-              <h3 style="margin: 0; font-size: 18px; font-weight: 700; text-shadow: 0 2px 10px rgba(0,0,0,0.3);">🧠 Evil AI Answer ⚡</h3>
-              <button id="closeBtn" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 20px; cursor: pointer; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; backdrop-filter: blur(10px);">&times;</button>
+            <div style="background: #ffffff; color: #000000; padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; border-radius: 8px 8px 0 0;">
+              <h3 style="margin: 0; font-size: 16px; font-weight: 600;">Answer</h3>
+              <button id="closeBtn" style="background: none; border: none; color: #666; font-size: 20px; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
             </div>
-            <div style="padding: 25px; text-align: center; position: relative;">
-              <div style="background: linear-gradient(135deg, rgba(52, 168, 83, 0.3), rgba(52, 168, 83, 0.1)); padding: 25px; border-radius: 16px; border: 2px solid #34a853; margin-bottom: 20px; position: relative; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(52, 168, 83, 0.2);">
-                <div style="font-size: 32px; font-weight: bold; color: #34a853; text-shadow: 0 2px 10px rgba(52, 168, 83, 0.3); margin-bottom: 8px;">${answerText}</div>
-                <div style="font-size: 14px; color: #a0f0a0; font-weight: 500;">Correct Answer Revealed!</div>
-                <div style="position: absolute; top: 15px; right: 15px; font-size: 24px; animation: pulse 2s infinite;">✅</div>
-              </div>
-              <div style="background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);">
-                <div style="font-size: 13px; color: #a0a6b8; display: flex; justify-content: space-between; align-items: center;">
-                  <span style="display: flex; align-items: center; gap: 5px;">
-                    <span style="background: linear-gradient(135deg, #ff0066, #8a2be2); padding: 4px 8px; border-radius: 10px; color: white; font-weight: 600;">⚡ ${credits} Credits</span>
-                  </span>
-                  <span style="font-style: italic;">Auto-closes in <span id="countdown" style="font-weight: bold; color: #ff0066;">4</span>s</span>
-                </div>
+            <div style="padding: 20px; text-align: center;">
+              <div style="font-size: 24px; font-weight: bold; color: #000; margin-bottom: 10px;">${answerText}</div>
+              <div style="font-size: 12px; color: #666; display: flex; justify-content: space-between; align-items: center; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+                <span style="font-weight: 500;">⚡ ${credits} Credits</span>
+                <span style="font-style: italic;">Auto-closes in <span id="countdown" style="font-weight: bold;">4</span>s</span>
               </div>
             </div>
           `;
 
-          // Add enhanced animation keyframes and styles
+          // Add simple animation
           if (!document.getElementById('evil-quiz-ai-styles')) {
             const style = document.createElement('style');
             style.id = 'evil-quiz-ai-styles';
             style.textContent = `
-              @keyframes evilSlideIn {
-                from { 
-                  transform: translateX(100%) scale(0.8); 
-                  opacity: 0; 
-                }
-                to { 
-                  transform: translateX(0) scale(1); 
-                  opacity: 1; 
-                }
-              }
-              @keyframes gradientMove {
-                0% { transform: translateX(-100%); }
-                100% { transform: translateX(100%); }
-              }
-              @keyframes pulse {
-                0%, 100% { opacity: 0.8; transform: scale(1); }
-                50% { opacity: 1; transform: scale(1.1); }
+              @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
               }
               #quiz-ai-popup #closeBtn:hover {
-                background: rgba(255,255,255,0.3) !important;
-                transform: rotate(90deg) !important;
+                color: #000 !important;
               }
             `;
             document.head.appendChild(style);
@@ -592,52 +579,39 @@ class QuizExtensionBackground {
 
           document.body.appendChild(popup);
 
-          // Enhanced close functionality
+          // Close functionality
           const closeBtn = popup.querySelector('#closeBtn');
           closeBtn.addEventListener('click', () => {
-            popup.style.animation = 'evilSlideIn 0.3s ease-out reverse';
-            setTimeout(() => popup.remove(), 300);
+            popup.remove();
           });
 
-          closeBtn.addEventListener('mouseenter', () => {
-            closeBtn.style.background = 'rgba(255,255,255,0.3)';
-            closeBtn.style.transform = 'rotate(90deg)';
-          });
-
-          closeBtn.addEventListener('mouseleave', () => {
-            closeBtn.style.background = 'rgba(255,255,255,0.2)';
-            closeBtn.style.transform = 'rotate(0deg)';
-          });
-
-          // Enhanced countdown and auto-close
+          // Countdown and auto-close
           let countdown = 4;
           const countdownEl = popup.querySelector('#countdown');
           const interval = setInterval(() => {
             countdown--;
             if (countdownEl) {
               countdownEl.textContent = countdown;
-              countdownEl.style.color = countdown <= 1 ? '#ff4757' : '#ff0066';
             }
             if (countdown <= 0) {
               clearInterval(interval);
               if (popup.parentNode) {
-                popup.style.animation = 'evilSlideIn 0.3s ease-out reverse';
-                setTimeout(() => popup.remove(), 300);
+                popup.remove();
               }
             }
           }, 1000);
 
-          console.log('✅ Evil Quiz AI popup created successfully!');
+          console.log('✅ Minimalist popup created successfully!');
         },
         args: [answer, credits]
       });
-      this.log('✅ Evil popup injected successfully');
+      this.log('✅ Minimalist popup injected successfully');
     } catch (error) {
-      this.log('❌ Failed to create evil popup:', error);
+      this.log('❌ Failed to create popup:', error);
       // Fallback to notification
       const answerText = answer.correct_option
-        ? `Evil Answer: ${answer.correct_option.toUpperCase()}`
-        : (answer.answer || 'Answer received from the dark side');
+        ? `Answer: ${answer.correct_option.toUpperCase()}`
+        : (answer.answer || 'Answer received');
       await this.showNotification(answerText, 'success');
     }
   }
@@ -657,7 +631,7 @@ class QuizExtensionBackground {
 
       if (response.ok) {
         const data = await response.json();
-        
+
         // Update stored user info
         const userInfo = await chrome.storage.sync.get(['userInfo']);
         if (userInfo.userInfo) {

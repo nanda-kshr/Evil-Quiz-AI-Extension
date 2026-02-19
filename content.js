@@ -7,19 +7,20 @@ class QuizExtensionContent {
 
   init() {
     this.log('🚀 Evil Quiz AI Content script initialized');
-    
+
     if (!this.isExtensionContextValid()) {
       this.log('❌ Extension context is invalid');
       return;
     }
-    
+
     this.bindEvents();
-    
+
     // Force initial check
     setTimeout(() => {
       this.forceSelectionCheck();
     }, 1000);
   }
+
 
   isExtensionContextValid() {
     try {
@@ -31,21 +32,78 @@ class QuizExtensionContent {
 
   bindEvents() {
     this.log('🎯 Binding evil events');
-    
+
     // Multiple selection detection methods
     document.addEventListener('mouseup', () => {
       this.log('👆 Mouse up detected');
       setTimeout(() => this.checkSelection(), 100);
     });
-    
+
     document.addEventListener('keyup', () => {
       this.log('⌨️ Key up detected');
       setTimeout(() => this.checkSelection(), 100);
     });
-    
+
     document.addEventListener('selectionchange', () => {
       this.log('📝 Selection change detected');
       setTimeout(() => this.checkSelection(), 100);
+    });
+
+    // Shortcut listener
+    document.addEventListener('keydown', async (e) => {
+      // Don't trigger if user is typing in an input field
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+        return;
+      }
+
+      try {
+        const data = await chrome.storage.sync.get(['evilShortcut']);
+        if (!data.evilShortcut) return;
+
+        const s = data.evilShortcut;
+        const pressedKey = e.key.toUpperCase();
+
+        this.log('⌨️ Key pressed:', { key: pressedKey, code: e.code, storedDetails: s });
+
+        // Check key (using e.code might be safer for letters, but let's stick to key for now as stored)
+        // If stored key is just a letter, e.key is fine.
+        if (pressedKey !== s.key) return;
+
+        // Check modifiers
+        const modifiersMatch =
+          (s.modifiers.includes('Ctrl') === e.ctrlKey) &&
+          (s.modifiers.includes('Alt') === e.altKey) &&
+          (s.modifiers.includes('Shift') === e.shiftKey) &&
+          (s.modifiers.includes('Command') === e.metaKey);
+
+        this.log('Modifier match:', modifiersMatch);
+
+        if (modifiersMatch) {
+          this.log('⚡ Shortcut match confirmed! Triggering action...');
+          e.preventDefault();
+          e.stopPropagation();
+
+          const selection = window.getSelection();
+          const selectedText = selection.toString().trim();
+
+          this.log('Selected text:', selectedText);
+
+          if (selectedText) {
+            this.log('📤 Sending getAnswerByShortcut message...');
+            const response = await chrome.runtime.sendMessage({
+              action: 'getAnswerByShortcut',
+              selectedText: selectedText
+            });
+            this.log('📥 Background response:', response);
+          } else {
+            this.log('❌ No text selected for shortcut');
+            // Maybe show a small toast in content script?
+            alert('Evil Quiz AI: Select some text first!');
+          }
+        }
+      } catch (error) {
+        this.log('Error in shortcut listener:', error);
+      }
     });
 
     // Listen for messages from background
@@ -85,7 +143,7 @@ class QuizExtensionContent {
 
       const selection = window.getSelection();
       const selectedText = selection.toString().trim();
-      
+
       this.log('📋 Evil selection details:', {
         text: selectedText.substring(0, 50) + (selectedText.length > 50 ? '...' : ''),
         length: selectedText.length,
@@ -98,7 +156,7 @@ class QuizExtensionContent {
         this.lastSelection = selectedText;
         this.notifyBackgroundScript(selectedText);
       }
-      
+
     } catch (error) {
       this.log('❌ Error checking evil selection:', error);
     }
@@ -121,7 +179,7 @@ class QuizExtensionContent {
 
     } catch (error) {
       this.log('❌ Failed to notify evil background:', error);
-      
+
       if (error.message.includes('context invalidated')) {
         this.log('🔄 Evil extension context invalidated - stopping operations');
         return;
